@@ -1,0 +1,79 @@
+#version 430 core
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(binding = 0, r32f) writeonly uniform image2DArray heightField;
+
+uniform vec3 uChunkOrigin;
+uniform float uChunkSize;
+uniform float uAmplitude;
+uniform float uFrequency;
+uniform int uResolution;
+uniform uint uSeed;
+uniform int uLayer;
+
+const vec2 kGradients[8] = vec2[8](
+    vec2(1.0, 0.0), vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(0.0, -1.0),
+    vec2(0.70710678, 0.70710678), vec2(-0.70710678, 0.70710678),
+    vec2(0.70710678, -0.70710678), vec2(-0.70710678, -0.70710678)
+);
+
+uint fastHash(int x, int y)
+{
+    uint h = uSeed;
+    h ^= uint(x) * 0x27d4eb2dU;
+    h = (h << 16) ^ (h >> 16);
+    h ^= uint(y) * 0x165667b1U;
+    h *= 0x9e3779b9U;
+    h ^= h >> 15;
+    return h;
+}
+
+float gradientDot(uint hash, vec2 delta)
+{
+    return dot(kGradients[hash & 7u], delta);
+}
+
+float fade(float t)
+{
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+}
+
+float cornerContribution(ivec2 cell, vec2 local, int ox, int oy)
+{
+    uint h = fastHash(cell.x + ox, cell.y + oy);
+    vec2 delta = local - vec2(float(ox), float(oy));
+    return gradientDot(h, delta);
+}
+
+float perlinHeight(vec2 worldXZ)
+{
+    vec2 scaled = worldXZ * uFrequency;
+    ivec2 cell = ivec2(floor(scaled));
+    vec2 local = scaled - vec2(cell);
+
+    vec2 fadeXY = vec2(fade(local.x), fade(local.y));
+
+    float n00 = cornerContribution(cell, local, 0, 0);
+    float n10 = cornerContribution(cell, local, 1, 0);
+    float n01 = cornerContribution(cell, local, 0, 1);
+    float n11 = cornerContribution(cell, local, 1, 1);
+
+    float nx0 = mix(n00, n10, fadeXY.x);
+    float nx1 = mix(n01, n11, fadeXY.x);
+    float n = mix(nx0, nx1, fadeXY.y);
+    return clamp(n * uAmplitude, -uAmplitude, uAmplitude);
+}
+
+void main()
+{
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    if (pixel.x >= uResolution + 1 || pixel.y >= uResolution + 1)
+        return;
+
+    vec2 uv = vec2(pixel) / float(uResolution);
+    vec2 worldXZ = uChunkOrigin.xz + uv * uChunkSize;
+    float height = perlinHeight(worldXZ);
+
+    imageStore(heightField, ivec3(pixel, uLayer), vec4(height, 0.0, 0.0, 0.0));
+}

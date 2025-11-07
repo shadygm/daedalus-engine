@@ -1,0 +1,21 @@
+set(CMAKE_CXX_FLAGS_COPY ${CMAKE_CXX_FLAGS})
+if (MSVC)
+	# Disable deprecation warnings when compiling fmtlib with MSVC.
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS")
+endif()
+
+add_subdirectory("catch2")
+add_subdirectory("glm")
+add_subdirectory("fmt")
+if (NOT FRAMEWORK_BASIC_LIBRARY)
+	add_subdirectory("tinyobjloader")
+	add_subdirectory("glad")
+	add_subdirectory("glfw3")
+	add_subdirectory("imgui")
+	add_subdirectory("stb")
+	add_subdirectory("nativefiledialog")
+	add_subdirectory("toml")
+	add_subdirectory("assimp")
+endif()
+
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS_COPY})
