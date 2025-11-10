@@ -40,4 +40,4 @@ cmake --build . -j $(nproc)
 Curious about implementation notes or extra screenshots? Check out [`report/report.md`](report/report.md) for some more details!
 
 ## Developpers
-This projects was made by [shadygm](https://github.com/shadygm) and [cookie123](https://github.com/cookie232).
+This projects was made by [shadygm](https://github.com/shadygm) and [cookie232](https://github.com/cookie232).
